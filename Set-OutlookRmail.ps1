@@ -1,13 +1,29 @@
-#Check if user uses Outlook. 
-if (!(Test-Path $env:localappdata\Microsoft\Outlook\*.*st))
-{
-    Write-Host "outlook has not been started or configured on client yet";
-    exit
+<#
+.SYNOPSIS
+    This script configures Rmail folders and rules in Outlook desktop clients.
+.DESCRIPTION
+    The script will add Receipts and Contracts folders.
+    It will then add rules to route messages:
+        From: receipts@r1.rpost.net => Receipts folder
+        From: contracts@re1.rpost.net => Contracts folder
+    It checks for the existence for these folders and rules before attempting to create them.
+.NOTES
+  Version:        0.1
+  Author:         Tim Jenks <tjenks@rpost.com>
+  Creation Date:  09/12/2019
+  Purpose/Change: Initial script development
+#>
+
+# Verify Outlook is installed and set up
+function CheckOutlook {
+    if (!(Test-Path $env:localappdata\Microsoft\Outlook\*.*st)) {
+        Write-Host "outlook has not been started or configured on client yet";
+        exit
+    }
 }
 
 # Garbage collection for COM objects
-function ReleaseRef  
-{
+function ReleaseRef {
     param($ref)
     ([System.Runtime.InteropServices.Marshal]::ReleaseComObject([System.__ComObject]$ref) -gt 0)
     [System.GC]::Collect()
@@ -15,8 +31,7 @@ function ReleaseRef
 }
 
 # Add folder to Outlook under Inbox
-function AddFolder
-{
+function AddOutlookFolder {
     param($name)
 
     Add-Type -AssemblyName microsoft.office.interop.outlook
@@ -31,26 +46,22 @@ function AddFolder
 
     $exists = $root.Folders | where-object { $_.name -eq $name }
 
-    if (!$exists)
-    {
-        $nf = $root.Folders.Add($name)
+    if (!$exists) {
+        try {
+            $root.Folders.Add($name) | Out-Null
+        }
+        catch {
+            return Write-Host $_.Exception.Message`n
+        }
 
         Write-Host "Folder created: $name"
-
-        ReleaseRef($nf)
     }
-    else
-    {
+    else {
         Write-Host "Folder exists: $name"
     }
-
-    ReleaseRef($root)
-    ReleaseRef($namespace)
-    ReleaseRef($outlook)
 }
 
-function AddOutlookFolderRule
-{
+function AddOutlookFolderRule {
     param([string]$RuleName, [string]$FromEmail, [string]$FolderName)
 
     Add-Type -AssemblyName microsoft.office.interop.outlook
@@ -69,35 +80,39 @@ function AddOutlookFolderRule
     $MoveTarget = $namespace.getFolderFromID($id)
     $rules = $outlook.session.DefaultStore.GetRules()
 
-    foreach($r in $rules)
-    {
+    foreach($r in $rules) {
         # Write-Host($r | Format-Table | Out-String)
         if($r.Name -eq $RuleName){
-            Write-Host "Rule already exists: $RuleName"
-            return
+            return Write-Host "Rule already exists: $RuleName"
         }
     }
 
-    $rule = $rules.Create($RuleName,$olRuleType::OlRuleReceive)
-    $FromCondition = $rule.Conditions.From
-    $FromCondition.Enabled = $true
-    $FromCondition.Recipients.Add($FromEmail)
-    $FromCondition.Recipients.ResolveAll()
-    $MoveRuleAction = $rule.Actions.MoveToFolder
-    # $MoveRuleAction.Folder = $MoveTarget
-    [Microsoft.Office.Interop.Outlook._MoveOrCopyRuleAction].InvokeMember(
-        "Folder",
-        [System.Reflection.BindingFlags]::SetProperty,
-        $null,
-        $MoveRuleAction,
-        $MoveTarget)
-    $MoveRuleAction.Enabled = $true
-    $rules.Save()
+    try {
+        $rule = $rules.Create($RuleName,$olRuleType::OlRuleReceive)
+        $FromCondition = $rule.Conditions.From
+        $FromCondition.Enabled = $true
+        $FromCondition.Recipients.Add($FromEmail) | Out-Null
+        $FromCondition.Recipients.ResolveAll()
+        $MoveRuleAction = $rule.Actions.MoveToFolder
+        # $MoveRuleAction.Folder = $MoveTarget
+        [Microsoft.Office.Interop.Outlook._MoveOrCopyRuleAction].InvokeMember(
+            "Folder",
+            [System.Reflection.BindingFlags]::SetProperty,
+            $null,
+            $MoveRuleAction,
+            $MoveTarget)
+        $MoveRuleAction.Enabled = $true
+        $rules.Save()
+    }
+
+    catch {
+        return Write-Host $_.Exception.Message`n
+    }
 
     Write-Host "Rule added: $RuleName"
 }
 
-AddFolder "Receipts"
-AddFolder "Contracts"
+AddOutlookFolder "Receipts"
+AddOutlookFolder "Contracts"
 AddOutlookFolderRule "Receipts" "receipts@r1.rpost.net" "Receipts"
 AddOutlookFolderRule "Contracts" "contracts@r1.rpost.net" "Contracts"
