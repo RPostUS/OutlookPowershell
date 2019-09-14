@@ -13,4 +13,3 @@ It will then add rules to route messages:
 - From: contracts@r1.rpost.net => Contracts folder
 
 It checks for the existence for these folders and rules before attempting to create them.
-
