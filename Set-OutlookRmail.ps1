@@ -8,7 +8,7 @@
         From: contracts@r1.rpost.net => Contracts folder
     It checks for the existence for these folders and rules before attempting to create them.
 .NOTES
-  Version:        0.1
+  Version:        0.1.1
   Author:         Tim Jenks <tjenks@rpost.com>
   Creation Date:  09/12/2019
   Purpose/Change: Initial script development
@@ -46,35 +46,35 @@ process {
     }
 
     # Add folder to Outlook under Inbox
-function AddOutlookFolder {
-    param($name)
+    function AddOutlookFolder {
+        param($name)
 
-    Add-Type -AssemblyName microsoft.office.interop.outlook
-    # $olFolders = “Microsoft.Office.Interop.Outlook.OlDefaultFolders” -as [type]
-    $olFolderInbox = 6
-    $outlook = new-object -comobject outlook.application
-    $namespace = $outlook.GetNamespace("MAPI")
+        Add-Type -AssemblyName microsoft.office.interop.outlook
+        # $olFolders = “Microsoft.Office.Interop.Outlook.OlDefaultFolders” -as [type]
+        $olFolderInbox = 6
+        $outlook = new-object -comobject outlook.application
+        $namespace = $outlook.GetNamespace("MAPI")
 
-    # root: Parent of Inbox
-    $root = $namespace.GetDefaultFolder($olFolderInbox).Parent
-    # $root = $namespace.GetDefaultFolder($olFolders::olFolderInbox).Parent
+        # root: Parent of Inbox
+        $root = $namespace.GetDefaultFolder($olFolderInbox).Parent
+        # $root = $namespace.GetDefaultFolder($olFolders::olFolderInbox).Parent
 
-    $exists = $root.Folders | where-object { $_.name -eq $name }
+        $exists = $root.Folders | where-object { $_.name -eq $name }
 
-    if (!$exists) {
-        try {
-            $root.Folders.Add($name) | Out-Null
+        if (!$exists) {
+            try {
+                $root.Folders.Add($name) | Out-Null
+            }
+            catch {
+                return Write-Host $_.Exception.Message`n
+            }
+
+            Write-Host "Folder created: $name"
         }
-        catch {
-            return Write-Host $_.Exception.Message`n
+        else {
+            Write-Host "Folder exists: $name"
         }
-
-        Write-Host "Folder created: $name"
     }
-    else {
-        Write-Host "Folder exists: $name"
-    }
-}
 
     function AddOutlookFolderRule {
         param([string]$RuleName, [string]$FromEmail, [string]$FolderName)
@@ -143,7 +143,7 @@ function AddOutlookFolder {
         AddOutlookFolderRule $ContractsRule $ContractsSender $ContractsFolderName
     }
 
-    Set-OutlookRmail $ReceiptFolderName, $ReceiptSender, $ReceiptRule, $ContractsFolderName, $ContractsSender, $ContractsRule
+    Set-OutlookRmail $ReceiptFolderName $ReceiptSender $ReceiptRule $ContractsFolderName $ContractsSender $ContractsRule
 
 }
 
