@@ -50,7 +50,7 @@ process {
         param($name)
 
         Add-Type -AssemblyName microsoft.office.interop.outlook
-        # $olFolders = “Microsoft.Office.Interop.Outlook.OlDefaultFolders” -as [type]
+        # $olFolders = "Microsoft.Office.Interop.Outlook.OlDefaultFolders" -as [type]
         $olFolderInbox = 6
         $outlook = new-object -comobject outlook.application
         $namespace = $outlook.GetNamespace("MAPI")
@@ -80,10 +80,10 @@ process {
         param([string]$RuleName, [string]$FromEmail, [string]$FolderName)
 
         Add-Type -AssemblyName microsoft.office.interop.outlook
-        $olFolders = “Microsoft.Office.Interop.Outlook.OlDefaultFolders” -as [type]
-        $olRuleType = “Microsoft.Office.Interop.Outlook.OlRuleType” -as [type]
+        $olFolders = "Microsoft.Office.Interop.Outlook.OlDefaultFolders" -as [type]
+        $olRuleType = "Microsoft.Office.Interop.Outlook.OlRuleType" -as [type]
         $outlook = New-Object -ComObject outlook.application
-        $namespace  = $outlook.GetNameSpace(“mapi”)
+        $namespace  = $outlook.GetNameSpace("mapi")
         $root = $namespace.GetDefaultFolder($olFolders::olFolderInbox).Parent
         # $MoveTarget = $root.Folders.item($FolderName)
         $id = [System.__ComObject].InvokeMember(
